@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NewTaskScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -30,8 +31,17 @@ const categoryColorMap: Record<string, string> = {
 
 const durations = ['30m', '1h', '2h', '3h', '4h'];
 
+// ✅ helper to always format in 24h
+const formatTime = (d: Date) =>
+  new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+
 const NewTaskScreen = () => {
   const navigation = useNavigation<NewTaskScreenNavigationProp>();
+
   const [taskTitle, setTaskTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [date, setDate] = useState(new Date());
@@ -47,8 +57,8 @@ const NewTaskScreen = () => {
       title: taskTitle,
       category: selectedCategory,
       categoryColor: categoryColorMap[selectedCategory] ?? '#000',
-      date: date.toISOString().split('T')[0], // "2025-08-26"
-      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: date.toLocaleDateString('en-CA'), // YYYY-MM-DD
+      time: formatTime(date), // ✅ always 24h
       duration,
     };
 
@@ -58,8 +68,14 @@ const NewTaskScreen = () => {
       const updated = [...existing, newTask];
       await AsyncStorage.setItem('tasks', JSON.stringify(updated));
 
-      navigation.navigate('Today', { newTask });
+      console.log('Task saved:', newTask);
 
+      navigation.navigate('Tabs', {
+        screen: 'Today',
+        params: { newTask },
+      });
+
+      // reset inputs
       setTaskTitle('');
       setSelectedCategory('');
     } catch (e) {
@@ -68,16 +84,18 @@ const NewTaskScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Title Input */}
       <Text style={styles.label}>Write a new task...</Text>
       <TextInput
         style={styles.input}
         value={taskTitle}
         onChangeText={setTaskTitle}
         placeholder="Add a Task"
-        placeholderTextColor={'#000'}
+        placeholderTextColor="#000"
       />
 
+      {/* Category Selector */}
       <Text style={styles.label}>Choose Category</Text>
       <View style={styles.categoryRow}>
         {categories.map(cat => (
@@ -113,6 +131,7 @@ const NewTaskScreen = () => {
         <DateTimePicker
           value={date}
           mode="date"
+          is24Hour={true}
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
@@ -127,9 +146,7 @@ const NewTaskScreen = () => {
         style={styles.pickerButton}
         onPress={() => setShowTimePicker(true)}
       >
-        <Text>
-          {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        <Text>{formatTime(date)}</Text>
       </TouchableOpacity>
       {showTimePicker && (
         <DateTimePicker
@@ -139,12 +156,18 @@ const NewTaskScreen = () => {
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={(event, selectedTime) => {
             setShowTimePicker(false);
-            if (selectedTime) setDate(selectedTime);
+            if (selectedTime) {
+              // ✅ keep the same date, just update hours & minutes
+              const updated = new Date(date);
+              updated.setHours(selectedTime.getHours());
+              updated.setMinutes(selectedTime.getMinutes());
+              setDate(updated);
+            }
           }}
         />
       )}
 
-      {/* Duration Picker */}
+      {/* Duration Selector */}
       <Text style={styles.label}>Duration</Text>
       <View style={styles.categoryRow}>
         {durations.map(d => (
@@ -168,10 +191,11 @@ const NewTaskScreen = () => {
         ))}
       </View>
 
+      {/* Save Button */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveText}>Save</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 

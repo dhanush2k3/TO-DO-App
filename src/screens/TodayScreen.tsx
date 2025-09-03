@@ -1,6 +1,13 @@
 // src/screens/TodayScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  StatusBar,
+  TouchableOpacity,
+  Text,
+} from 'react-native';
 import Header from '../components/Header';
 import CategoryCard from '../components/CategoryCard';
 import TaskItem from '../components/TaskItem';
@@ -12,14 +19,13 @@ import {
   RouteProp,
   useFocusEffect,
 } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TabParamList } from '../navigation/AppNavigator';
 
-type TodayScreenRouteProp = RouteProp<RootStackParamList, 'Today'>;
-type TodayScreenNavigationProp = StackNavigationProp<
-  RootStackParamList,
-  'Today'
->;
+type TodayScreenRouteProp = RouteProp<TabParamList, 'Today'>;
+
+type TodayScreenNavigationProp = StackNavigationProp<TabParamList, 'Today'>;
 
 type Task = {
   title: string;
@@ -71,7 +77,8 @@ const TodayScreen = () => {
   const othersCount = tasks.filter(t => t.category === 'Others').length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle={'dark-content'} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Header title="Today" date="26 Dec" />
 
@@ -115,9 +122,25 @@ const TodayScreen = () => {
           />
         ))}
       </ScrollView>
+      <TouchableOpacity
+        onPress={async () => {
+          await AsyncStorage.removeItem('tasks');
+          console.log('✅ All tasks cleared');
+        }}
+        style={{
+          padding: 12,
+          backgroundColor: 'red',
+          margin: 20,
+          width: 80,
+          borderRadius: 20,
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: '#fff' }}>Delete</Text>
+      </TouchableOpacity>
 
       <FloatingButton onPress={() => navigation.navigate('NewTask' as never)} />
-    </View>
+    </SafeAreaView>
   );
 };
 
